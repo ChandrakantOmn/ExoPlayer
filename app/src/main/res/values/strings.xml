@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">ExoPlayerDemo</string>
+    <string name="media_url_dash">https://www.youtube.com/watch?v=14ksaEKARVI&amp;ab_channel=TheCanadianLad</string>
+
+</resources>
