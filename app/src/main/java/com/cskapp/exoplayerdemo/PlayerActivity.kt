@@ -98,7 +98,6 @@ class PlayerActivity : AppCompatActivity() {
         player!!.seekTo(currentWindow, playbackPosition)
         player!!.addListener(playbackStateListener!!)
         player!!.prepare()
-
     }
 
     private fun releasePlayer() {
