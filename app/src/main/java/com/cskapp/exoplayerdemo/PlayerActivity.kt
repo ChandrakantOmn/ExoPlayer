@@ -16,19 +16,31 @@
 package com.cskapp.exoplayerdemo
 
 import android.annotation.SuppressLint
+import android.content.ContentUris
+import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
+import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
+import com.google.android.exoplayer2.source.ExtractorMediaSource
+import com.google.android.exoplayer2.source.MediaSource
+import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.ui.PlayerView
+import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.upstream.RawResourceDataSource
 import com.google.android.exoplayer2.util.MimeTypes
 import com.google.android.exoplayer2.util.Util
+import java.io.IOException
+
 
 /**
  * A fullscreen activity to play audio or video streams.
@@ -50,7 +62,7 @@ class PlayerActivity : AppCompatActivity() {
     public override fun onStart() {
         super.onStart()
         if (Util.SDK_INT > 23) {
-            initializePlayer()
+            getFile()
         }
     }
 
@@ -58,7 +70,7 @@ class PlayerActivity : AppCompatActivity() {
         super.onResume()
         hideSystemUi()
         if (Util.SDK_INT <= 23 || player == null) {
-            initializePlayer()
+            //initializePlayer(VideoType.RAW)
         }
     }
 
@@ -76,28 +88,64 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
-    private fun initializePlayer() {
+    private fun initializePlayer(videoType: VideoType, uri1: Uri? = null) {
         if (player == null) {
             val trackSelector = DefaultTrackSelector(this)
             trackSelector.setParameters(
-                trackSelector.buildUponParameters().setMaxVideoSizeSd()
+                    trackSelector.buildUponParameters().setMaxVideoSizeSd()
             )
             player = SimpleExoPlayer.Builder(this)
-                .setTrackSelector(trackSelector)
-                .build()
+                    .setTrackSelector(trackSelector)
+                    .build()
         }
         playerView!!.player = player
-        val uri = RawResourceDataSource.buildRawResourceUri(R.raw.video)
-
-        val mediaItem = MediaItem.Builder()
-            .setUri(getString(R.string.media_url_dash))
-            .setMimeType(MimeTypes.APPLICATION_MPD)
-            .build()
-        player!!.setMediaItem(MediaItem.fromUri(uri))
         player!!.playWhenReady = playWhenReady
         player!!.seekTo(currentWindow, playbackPosition)
         player!!.addListener(playbackStateListener!!)
-        player!!.prepare()
+        when (videoType) {
+            VideoType.CLOUD -> {
+                val mediaItem1 = MediaItem.Builder()
+                        .setUri("http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4")
+                        .setMimeType(MimeTypes.APPLICATION_MPD)
+                        .build()
+                val mediaItem = MediaItem.Builder()
+                        .setUri(getString(R.string.media_url_dash))
+                        .setMimeType(MimeTypes.APPLICATION_MPD)
+                        .build()
+                player!!.setMediaItem(mediaItem)
+                player!!.prepare()
+
+            }
+            VideoType.RAW -> {
+                val uri = RawResourceDataSource.buildRawResourceUri(R.raw.video)
+                val mediaItem = MediaItem.fromUri(uri)
+                player!!.setMediaItem(mediaItem)
+                player!!.prepare()
+
+            }
+
+            VideoType.SD_CARD -> {
+                val uri2 = Uri.parse(uri1.toString())
+                val audioSource = ExtractorMediaSource(
+                        uri2,
+                        DefaultDataSourceFactory(this, "MyExoplayer"),
+                        DefaultExtractorsFactory(),
+                        null,
+                        null
+                )
+                player!!.prepare(audioSource);
+
+            }
+
+        }
+
+
+    }
+
+    private fun buildMediaSource(sampleUrl: String): MediaSource? {
+        val dataSourceFactory = DefaultDataSourceFactory(this, "sample")
+        return ProgressiveMediaSource.Factory(dataSourceFactory)
+                .createMediaSource(Uri.parse(""))
     }
 
     private fun releasePlayer() {
@@ -138,4 +186,46 @@ class PlayerActivity : AppCompatActivity() {
     companion object {
         private val TAG = PlayerActivity::class.java.name
     }
+
+    private fun getFile() {
+        val contentUri = MediaStore.Files.getContentUri("external")
+        val selection = MediaStore.MediaColumns.RELATIVE_PATH + "=?"
+        val selectionArgs = arrayOf(Environment.DIRECTORY_DOWNLOADS + "/video/")
+        val cursor = contentResolver.query(contentUri, null, selection, selectionArgs, null)
+        var uri: Uri? = null
+        if (cursor!!.count == 0) {
+            Toast.makeText(
+                    this,
+                    "No file found in \"" + Environment.DIRECTORY_DOWNLOADS + "/video/\"",
+                    Toast.LENGTH_LONG
+            ).show()
+        } else {
+            while (cursor.moveToNext()) {
+                val fileName =
+                        cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME))
+                if (fileName == "test_video.mp4") {
+                    val id = cursor.getLong(cursor.getColumnIndex(MediaStore.MediaColumns._ID))
+                    uri = ContentUris.withAppendedId(contentUri, id)
+                    Toast.makeText(this, uri.path, Toast.LENGTH_SHORT).show()
+                    break
+                }
+            }
+            if (uri == null) {
+                Toast.makeText(this, "Video not found", Toast.LENGTH_SHORT).show()
+                val path = getString(R.string.media_url_dash)
+                initializePlayer(VideoType.CLOUD, Uri.parse(path))
+            } else {
+                try {
+                    initializePlayer(VideoType.SD_CARD, uri)
+                } catch (e: IOException) {
+                    Toast.makeText(this, "Fail to read file", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+}
+
+enum class VideoType(val type: String) {
+    RAW("raw"), SD_CARD("sd_card"), CLOUD("cloud")
 }
