@@ -15,11 +15,8 @@
  */
 package com.cskapp.exoplayerdemo
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.content.ContentUris
-import android.content.pm.PackageManager
-import android.database.Cursor
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -28,8 +25,6 @@ import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
@@ -40,7 +35,6 @@ import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.ui.PlayerView
-import com.google.android.exoplayer2.upstream.DataSource
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.upstream.RawResourceDataSource
 import com.google.android.exoplayer2.util.MimeTypes
@@ -51,7 +45,7 @@ import java.io.IOException
 /**
  * A fullscreen activity to play audio or video streams.
  */
-class PlayerActivity : AppCompatActivity() {
+class PlayerActivity1 : AppCompatActivity() {
     private var playbackStateListener: PlaybackStateListener? = null
     private var playerView: PlayerView? = null
     private var player: SimpleExoPlayer? = null
@@ -68,14 +62,9 @@ class PlayerActivity : AppCompatActivity() {
     public override fun onStart() {
         super.onStart()
         if (Util.SDK_INT > 23) {
-            //getFile()
-            permissionCheck()
-
+            getFile()
         }
-
-
     }
-
 
     public override fun onResume() {
         super.onResume()
@@ -199,112 +188,43 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun getFile() {
-        try {
-            val contentUri = MediaStore.Files.getContentUri("external")
-            val selection = MediaStore.MediaColumns.RELATIVE_PATH + "=?"
-            val selectionArgs = arrayOf(Environment.DIRECTORY_DOWNLOADS + "/video/")
-            val cursor = contentResolver.query(contentUri, null, selection, selectionArgs, null)
-            var uri: Uri? = null
-            if (cursor!!.count == 0) {
-                Toast.makeText(
-                        this,
-                        "No file found in \"" + Environment.DIRECTORY_DOWNLOADS + "/video/\"",
-                        Toast.LENGTH_LONG
-                ).show()
-            } else {
-                while (cursor.moveToNext()) {
-                    val fileName =
-                            cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME))
-                    if (fileName == "test_video.mp4") {
-                        val id = cursor.getLong(cursor.getColumnIndex(MediaStore.MediaColumns._ID))
-                        uri = ContentUris.withAppendedId(contentUri, id)
-                        Toast.makeText(this, uri.path, Toast.LENGTH_SHORT).show()
-                        break
-                    }
-                }
-                if (uri == null) {
-                    Toast.makeText(this, "Video not found", Toast.LENGTH_SHORT).show()
-                    val path = getString(R.string.media_url_dash)
-                    //  initializePlayer(VideoType.CLOUD, Uri.parse(path))
-                } else {
-                    try {
-                        initializePlayer(VideoType.SD_CARD, uri)
-                    } catch (e: IOException) {
-                        Toast.makeText(this, "Fail to read file", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Toast.makeText(this, e.message.toString(), Toast.LENGTH_SHORT).show()
-            e.printStackTrace()
-        }
-    }
-
-    private fun buildMediaSourceNew(uri: Uri, buildType: Int): MediaSource? {
-        val datasourceFactroy: DataSource.Factory = DefaultDataSourceFactory(this, Util.getUserAgent(this, "Your App Name"))
-        return ExtractorMediaSource.Factory(datasourceFactroy).createMediaSource(uri)
-    }
-
-    private fun permissionCheck() {
-        if (ContextCompat.checkSelfPermission(this,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                            Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                ActivityCompat.requestPermissions(this,
-                        arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                        110)
-
-            } else {
-                ActivityCompat.requestPermissions(this,
-                        arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                        110)
-            }
+        val contentUri = MediaStore.Files.getContentUri("external")
+        val selection = MediaStore.MediaColumns.RELATIVE_PATH + "=?"
+        val selectionArgs = arrayOf(Environment.DIRECTORY_DOWNLOADS + "/video/")
+        val cursor = contentResolver.query(contentUri, null, selection, selectionArgs, null)
+        var uri: Uri? = null
+        if (cursor!!.count == 0) {
+            Toast.makeText(
+                    this,
+                    "No file found in \"" + Environment.DIRECTORY_DOWNLOADS + "/video/\"",
+                    Toast.LENGTH_LONG
+            ).show()
         } else {
-          //  getFile()
-
-            val m=getAllMedia()
-            initializePlayer(VideoType.SD_CARD, Uri.parse(m?.get(0)))
-
-            Log.d("MEDIA", m?.size.toString()+" Videos")
-        }
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        when (requestCode) {
-            110 -> {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    getFile()
-                } else {
-                    androidx.appcompat.app.AlertDialog.Builder(this)
-                            .setTitle("Permission")
-                            .setMessage("Permission")
-                            .setNegativeButton("Cancel") { dialog, _ ->
-                                dialog.dismiss()
-                            }.setPositiveButton("Ok") { dialog, _ ->
-                                dialog.dismiss()
-                            }.show()
+            while (cursor.moveToNext()) {
+                val fileName =
+                        cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.DISPLAY_NAME))
+                if (fileName == "test_video.mp4") {
+                    val id = cursor.getLong(cursor.getColumnIndex(MediaStore.MediaColumns._ID))
+                    uri = ContentUris.withAppendedId(contentUri, id)
+                    Toast.makeText(this, uri.path, Toast.LENGTH_SHORT).show()
+                    break
                 }
-                return
+            }
+            if (uri == null) {
+                Toast.makeText(this, "Video not found", Toast.LENGTH_SHORT).show()
+                val path = getString(R.string.media_url_dash)
+                initializePlayer(VideoType.CLOUD, Uri.parse(path))
+            } else {
+                try {
+                    initializePlayer(VideoType.SD_CARD, uri)
+                } catch (e: IOException) {
+                    Toast.makeText(this, "Fail to read file", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
+}
 
-    fun getAllMedia(): ArrayList<String?>? {
-        val videoItemHashSet: HashSet<String> = HashSet()
-        val projection = arrayOf(MediaStore.Video.VideoColumns.DATA, MediaStore.Video.Media.DISPLAY_NAME)
-        val cursor: Cursor? = contentResolver.query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, projection, null, null, null)
-        try {
-            cursor?.moveToFirst()
-            if (cursor != null) {
-                do {
-                    videoItemHashSet.add(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)))
-                } while (cursor.moveToNext())
-            }
-            cursor?.close()
-        } catch (e: java.lang.Exception) {
-            e.printStackTrace()
-        }
-        return ArrayList(videoItemHashSet)
-    }
+enum class VideoType(val type: String) {
+    RAW("raw"), SD_CARD("sd_card"), CLOUD("cloud")
 }
