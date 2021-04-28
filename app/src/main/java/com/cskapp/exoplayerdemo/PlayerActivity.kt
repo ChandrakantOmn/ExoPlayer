@@ -45,6 +45,7 @@ import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.upstream.RawResourceDataSource
 import com.google.android.exoplayer2.util.MimeTypes
 import com.google.android.exoplayer2.util.Util
+import java.io.File
 import java.io.IOException
 
 
@@ -100,6 +101,7 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun initializePlayer(videoType: VideoType, uri1: Uri? = null) {
+        Log.d("MEDIA 1", uri1.toString())
         if (player == null) {
             val trackSelector = DefaultTrackSelector(this)
             trackSelector.setParameters(
@@ -144,7 +146,13 @@ class PlayerActivity : AppCompatActivity() {
                         null,
                         null
                 )
-                player!!.prepare(audioSource);
+                //  player!!.prepare(audioSource);
+                val mediaItem = MediaItem.Builder()
+                        .setUri(getString(R.string.media_url_dash))
+                        .setMimeType(MimeTypes.APPLICATION_MPD)
+                        .build()
+                player!!.setMediaItem(MediaItem.fromUri(uri2))
+                player!!.prepare()
 
             }
 
@@ -260,12 +268,26 @@ class PlayerActivity : AppCompatActivity() {
                         110)
             }
         } else {
-          //  getFile()
+            //  getFile()
+            val m = getAllMedia()
+           // initializePlayer(VideoType.SD_CARD, Uri.parse(m?.get(4)))
+            if (m != null) {
+                for ( video in m){
+                    Log.d("MEDIA", video.toString())
+                    if (video?.contains("Explain Tenet like Im 5 _v240P.mp4") == true){
+                       initializePlayer(VideoType.SD_CARD, Uri.parse(video))
+                        break
+                    }
+                }
+            }
+             Log.d("MEDIA", m?.size.toString() + " Videos")
+/*
+            if (hasExternalStoragePrivateFile()) {
+                val file = File(getExternalFilesDir(null), "test_video.mp4")
+                // initializePlayer(VideoType.SD_CARD, Uri.parse(file.absolutePath))
+            }
+*/
 
-            val m=getAllMedia()
-            initializePlayer(VideoType.SD_CARD, Uri.parse(m?.get(0)))
-
-            Log.d("MEDIA", m?.size.toString()+" Videos")
         }
     }
 
@@ -274,7 +296,7 @@ class PlayerActivity : AppCompatActivity() {
             110 -> {
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    getFile()
+                   // getFile()
                 } else {
                     androidx.appcompat.app.AlertDialog.Builder(this)
                             .setTitle("Permission")
@@ -306,5 +328,14 @@ class PlayerActivity : AppCompatActivity() {
             e.printStackTrace()
         }
         return ArrayList(videoItemHashSet)
+    }
+
+    fun hasExternalStoragePrivateFile(): Boolean {
+        // Get path for the file on external storage.  If external
+        // storage is not currently mounted this will fail.
+        val file = File(getExternalFilesDir(null), "test_video.mp4")
+        initializePlayer(VideoType.SD_CARD, Uri.parse(file.absolutePath))
+
+        return file.exists()
     }
 }
